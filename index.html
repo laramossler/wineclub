@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>The Wine Club</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +20,11 @@
   /* page transitions */
   @keyframes wcFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .wc-fade { animation: wcFade .28s ease both; }
+  /* mobile — fill the viewport, drop the showcase chrome */
+  @media (max-width: 900px) {
+    body { display: block; }
+    .stage { padding: 0; min-height: 100vh; min-height: 100dvh; }
+  }
 </style>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -52,7 +57,30 @@ const salonDir = {
   body: D.salon.body,          // EB Garamond
 };
 
-function Phone({ children, onBack, dir, route }) {
+function useIsMobile(bp = 900) {
+  const get = () => typeof window !== 'undefined' && window.innerWidth <= bp;
+  const [m, setM] = React.useState(get);
+  React.useEffect(() => {
+    const onR = () => setM(get());
+    window.addEventListener('resize', onR);
+    return () => window.removeEventListener('resize', onR);
+  }, []);
+  return m;
+}
+
+function Phone({ children, onBack, dir, route, mobile }) {
+  if (mobile) {
+    return (
+      <div style={{
+        width: '100vw', height: '100vh', height: '100dvh',
+        background: dir.bg, position: 'relative', overflow: 'hidden',
+      }}>
+        <div key={route} className="wc-fade" style={{ position: 'absolute', inset: 0 }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
   const W = 390, H = 800;
   return (
     <div style={{
@@ -98,6 +126,7 @@ function Phone({ children, onBack, dir, route }) {
 // ─────────────────────────────────────────────────────────────
 function App() {
   const [t, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+  const mobile = useIsMobile();
   const [route, setRoute] = React.useState({ name: 'home' });
   const [pickedFlavors, setPickedFlavors] = React.useState(new Set(['bright fruit', 'spice & smoke', 'funky & wild']));
   const [privateNote, setPrivateNote] = React.useState('');
@@ -120,6 +149,17 @@ function App() {
   else if (route.name === 'thread') body = <S.SalonThread {...cfg} threadId={route.id} go={go} raised={raised} setRaised={setRaised} />;
   else if (route.name === 'note')  body = <S.Note {...cfg} go={go} composeMsg={composeMsg} setComposeMsg={setComposeMsg} />;
   else if (route.name === 'profile') body = <S.Profile {...cfg} go={go} pickedFlavors={pickedFlavors} setPickedFlavors={setPickedFlavors} />;
+
+  if (mobile) {
+    return (
+      <div className="stage">
+        <Phone dir={dir} route={route.name + (route.id || '')} mobile>
+          {body}
+          <S.TabBar dir={dir} route={route.name} go={go} iconStyle={t.iconStyle} />
+        </Phone>
+      </div>
+    );
+  }
 
   return (
     <div className="stage">
